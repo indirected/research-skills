@@ -1,0 +1,23 @@
+{
+  "skill_name": "result-analyzer-and-table-gen",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished running the autopatch benchmark with Claude 3.5 Sonnet on the ARVO-Lite 15-case dataset. The stats file is at /tmp/eval_data/stats.json and the per-case reports are at /tmp/eval_data/patch_gen_reports.json. Can you analyze these results and generate a LaTeX results table for the paper? Save it to paper/tables/ in the usual format.",
+      "expected_output": "A properly formatted ACL booktabs LaTeX table saved to paper/tables/results_main.tex, plus a brief results_analysis markdown file with key statistics. The table should use \\toprule/\\midrule/\\bottomrule, bold the best values, include a caption with \\label{}, and correctly reflect the numbers from the JSON files.",
+      "files": ["/tmp/eval_data/stats.json", "/tmp/eval_data/patch_gen_reports.json"]
+    },
+    {
+      "id": 2,
+      "prompt": "We ran the benchmark on three different models: GPT-4o, Claude 3.5 Sonnet, and Gemini 1.5 Pro. I have the stats JSON for all three at /tmp/eval_data/multi_model_stats.json. Please generate a comparison table and a bar chart figure showing QA pass rate, Tier 1 success rate, and correct patch rate for each model. The figures should be ACL-compliant.",
+      "expected_output": "A multi-model comparison LaTeX table with booktabs formatting, plus a Python script that generates a bar chart figure saved as a PDF using Wong color palette and 9pt font. Bold the best value in each column. Generate the matplotlib figure correctly sized for ACL single column (3in wide).",
+      "files": ["/tmp/eval_data/multi_model_stats.json"]
+    },
+    {
+      "id": 3,
+      "prompt": "Hey, can you write the results section of the paper based on our benchmark run? The stats are at /tmp/eval_data/stats.json. I need a draft LaTeX results section that I can paste into Overleaf. It should reference the tables and figures with \\autoref{}.",
+      "expected_output": "A LaTeX results section draft saved to paper/sections/results_draft.tex with at least an Overall Performance subsection, proper \\label{} and \\autoref{} references to the table and figures, and a reminder to push to Overleaf after editing.",
+      "files": ["/tmp/eval_data/stats.json"]
+    }
+  ]
+}

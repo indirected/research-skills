@@ -1,0 +1,27 @@
+{
+  "eval_id": 2,
+  "eval_name": "eval-2-model-comparison",
+  "prompt": "We ran the benchmark on three different models: GPT-4o, Claude 3.5 Sonnet, and Gemini 1.5 Pro. I have the stats JSON for all three at /tmp/eval_data/multi_model_stats.json. Please generate a comparison table and a bar chart figure showing QA pass rate, Tier 1 success rate, and correct patch rate for each model. The figures should be ACL-compliant.",
+  "assertions": [
+    {
+      "id": "comparison_table_created",
+      "description": "A multi-model LaTeX comparison table is created"
+    },
+    {
+      "id": "all_three_models_present",
+      "description": "All three models (GPT-4o, Claude 3.5 Sonnet, Gemini) appear in the table"
+    },
+    {
+      "id": "best_value_bolded",
+      "description": "The best value in at least one column is bolded with \\textbf{}"
+    },
+    {
+      "id": "figure_script_or_file",
+      "description": "A matplotlib figure script is written and/or a figure file is generated"
+    },
+    {
+      "id": "wong_palette_used",
+      "description": "Output mentions color-blind safe palette (Wong) or uses specific hex codes from it"
+    }
+  ]
+}
