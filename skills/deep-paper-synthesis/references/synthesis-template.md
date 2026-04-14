@@ -7,9 +7,22 @@ section. Use this template for every paper in the deep-paper-synthesis workflow.
 
 ## Full Paper Extraction Card Template
 
-Copy this block for each paper and fill in all sections.
+Each paper is saved as its own file at
+`literature/synthesis/{TOPIC}/{cluster_slug}/{paper_slug}.md`.
+Copy this block and fill in all sections.
 
 ```markdown
+---
+title: "{Full Paper Title}"
+authors: "{First3 ; et al.}"
+venue: "{venue abbreviation + year, e.g., CCS 2024}"
+arxiv_id: "{arxiv_id or N/A}"
+url: "{canonical URL}"
+cluster: "{cluster_slug}"
+secondary_clusters: []
+paper_slug: "{paper_slug}"
+relevance_score: {1-5}
+status: synthesized
 ---
 
 ### [{Full Paper Title}]({url})
@@ -245,21 +258,45 @@ on {benchmark}, a benchmark specifically designed for {properties}.
 
 ---
 
-## Synthesis File Header Template
+## Manifest File Header Template
+
+The manifest lives at `literature/synthesis/{TOPIC}/manifest.md` and is the single entry point
+for any AI working with the literature set.
 
 ```markdown
-# Literature Synthesis: {TOPIC}
-**Generated**: {YYYY-MM-DD}
-**Skill version**: deep-paper-synthesis 1.0.0
-**Papers synthesized**: {N}
-**Status in tracker**: synthesized
+# Synthesis Manifest: {TOPIC}
+**Date**: {YYYY-MM-DD} | **Papers**: {N} | **Clusters**: {K}
+**Skill version**: deep-paper-synthesis 2.0.0
 
 ## Papers in This Synthesis
 
-| # | Title | Authors | Venue | Year | Score | Access |
-|---|---|---|---|---|---|---|
-| 1 | [{title}]({url}) | {authors} | {venue} | {year} | {score} | Full PDF |
-| 2 | ... | | | | | Abstract only |
+### {Cluster Display Name} (`{cluster_slug}/`)
+- [{title}](./{cluster_slug}/{paper_slug}.md) — {authors}, {venue} {year} | Relevance: {score}/5
+- ...
+
+### {Cluster Display Name} (`{cluster_slug}/`)
+- ...
+
+## Comparison Table
+See [{TOPIC}_table.tex](./{TOPIC}_table.tex)
+
+## Cross-Paper Analysis
+
+### Idea Evolution Timeline
+{3-4 sentence paragraph}
+
+### Open Problems
+{bullet list or table}
+
+### Conflicting Claims
+{list; omit section if none}
+
+## Narrative Synthesis
+{3-5 paragraphs suitable for Related Work}
 
 ---
+
+## Examined but Excluded
+{papers rejected after reading; omit section if none}
+- {Title} — {reason}
 ```

@@ -10,23 +10,45 @@ description: |
   in context", "what are the key takeaways from the to-read list", "summarize my reading list".
   Run this skill after paper-search-and-triage has populated the "to-read" list, or when the user
   directly provides paper IDs, PDF links, or titles to analyze.
-version: 1.0.0
+version: 2.0.0
 tools: Read, Glob, Grep, Bash, WebSearch, WebFetch, Write, Edit
 ---
 
 # Deep Paper Synthesis
 
-This skill performs deep reading and synthesis of academic papers, producing per-paper extraction
-cards, cross-paper comparison tables in ACL LaTeX format, and narrative synthesis paragraphs
-suitable for the Related Work section of the paper.
+This skill performs deep reading and synthesis of academic papers, producing:
+- **One `.md` file per paper** containing the extraction card
+- **One directory per thematic cluster** grouping the paper files
+- **One `manifest.md`** at the topic root — the lightweight index with narrative synthesis and
+  cross-paper analysis (the only file an AI needs to load for orientation)
+- **One `_table.tex`** containing the ACL-format LaTeX comparison table
 
-## Output Locations
+This structure keeps individual paper files small and AI-friendly (each fits in one context
+window), while the manifest provides the high-level view.
 
-| Output | Path |
-|---|---|
-| Per-paper cards + narrative | `literature/synthesis/{TOPIC}_synthesis.md` |
-| ACL-format LaTeX table | `literature/synthesis/{TOPIC}_table.tex` |
-| Updated paper tracker | `literature/papers.csv` (status → `synthesized`) |
+## Output Structure
+
+```
+literature/synthesis/{TOPIC}/
+  manifest.md                    ← index, cluster map, narrative synthesis, open problems
+  {TOPIC}_table.tex              ← ACL LaTeX comparison table
+  {cluster_slug}/
+    {paper_slug}.md              ← one extraction card per paper
+    {paper_slug}.md
+  {cluster_slug}/
+    {paper_slug}.md
+  ...
+```
+
+**Naming conventions:**
+- `{TOPIC}` — short label for the synthesis batch (e.g., `llm_vuln_repair`, `apr_baselines`).
+  Derived in Step 1. Becomes the directory name under `literature/synthesis/`.
+- `{cluster_slug}` — lowercased, underscored cluster name derived from the papers themselves
+  (e.g., `llm_based_repair`, `classical_apr`, `benchmarks`). Derived in Step 4a.
+- `{paper_slug}` — `{firstauthor}_{year}` form, lowercased (e.g., `xia_2023`,
+  `sobania_2023`). If two papers share the same slug, append a letter: `xia_2023a`, `xia_2023b`.
+
+**Updated tracker:** `literature/papers.csv` (status → `synthesized`)
 
 ---
 
@@ -50,7 +72,7 @@ For papers with no `arxiv_id` (status `s2:...` prefix), use the `url` field to a
 
 Record the final paper list. Assign a short `TOPIC` label (e.g., `llm_vuln_repair`,
 `apr_baselines`, `fuzzing_ml`) based on the cluster of papers selected. This label becomes the
-filename stem for synthesis outputs.
+**directory name** for all synthesis outputs under `literature/synthesis/{TOPIC}/`.
 
 ### Step 2 — Fetch Each Paper
 
@@ -73,10 +95,12 @@ For each paper in the synthesis list:
 
 See `skills/deep-paper-synthesis/references/synthesis-template.md` for the exact paper card format.
 
-### Step 3 — Extract Per-Paper Information
+### Step 3 — Draft Per-Paper Extraction Cards (in memory)
 
-For each paper, produce a **paper extraction card** using the template in
-`references/synthesis-template.md`. The card has these sections:
+For each paper, draft a **paper extraction card** in memory. Do not write files yet — cluster
+assignments (Step 4a) determine the directory paths. Hold all cards until Step 4a is complete.
+
+The card contains these sections:
 
 #### 3a. Problem Statement
 One concise paragraph (2-4 sentences):
@@ -128,13 +152,14 @@ Format as a small table if multiple metrics are reported:
 - What gap does our work fill that this paper does not address?
 - Should this paper be cited in Related Work, Methodology, or Evaluation sections?
 
-Update `gap_notes` in `papers.csv` with the key phrase from this section.
+Note the gap phrase; it will be written to `gap_notes` in `papers.csv` in Step 9.
 
-### Step 4 — Cross-Paper Analysis
-
-After all cards are complete, perform the following analyses:
+### Step 4 — Cross-Paper Analysis and Cluster Assignment
 
 #### 4a. Thematic Clustering
+
+**Do this before writing any files.** Scan all drafted cards and assign each paper to a cluster.
+This determines the directory structure.
 
 Identify 3-5 thematic clusters across the papers. Derive cluster names from the papers
 themselves — do not assume a fixed set. Common cluster types that apply across domains:
@@ -146,7 +171,10 @@ themselves — do not assume a fixed set. Common cluster types that apply across
 5. **Adjacent Methods** — related techniques from neighboring sub-fields
 
 For the specific domain, derive more precise cluster names from the paper abstracts.
-Assign each paper to its primary cluster. A paper may appear in a secondary cluster too.
+Assign each paper to its **primary cluster** (`cluster` field). A paper may appear in a
+secondary cluster too (record in `secondary_clusters` front matter field).
+
+After assigning clusters, derive `{cluster_slug}` and `{paper_slug}` for every paper.
 
 #### 4b. Idea Evolution Timeline
 
@@ -155,7 +183,7 @@ Trace the chronological progression of key ideas in the domain:
 - What preceded it, and what did it supersede?
 - What was the state of the art immediately before the paper being written?
 
-Write a 3-4 sentence paragraph tracing this arc.
+Write a 3-4 sentence paragraph tracing this arc. This goes in `manifest.md`.
 
 #### 4c. Open Problems Identification
 
@@ -163,6 +191,8 @@ From the limitations sections of all cards, enumerate open problems that multipl
 - Which limitations appear in 3+ papers? (these are structural gaps in the field)
 - Which limitations are addressed by some papers but not others?
 - What does no paper in the set address? (this is where the paper being written contributes)
+
+This goes in `manifest.md`.
 
 ### Step 5 — Generate ACL Comparison Table
 
@@ -185,7 +215,7 @@ in the set (typically 4-6 axes total):
 
 Use the LaTeX table template from `references/latex-table-patterns.md`.
 
-Save to `literature/synthesis/{TOPIC}_table.tex`.
+Hold the table in memory for now; it will be written to disk in Step 8.
 
 Suggested column grouping:
 - Group 1: Approach (paper, venue, year)
@@ -195,7 +225,7 @@ Suggested column grouping:
 
 ### Step 6 — Write Narrative Synthesis
 
-Write 3-5 paragraphs of narrative synthesis. Structure:
+Write 3-5 paragraphs of narrative synthesis. This content goes in `manifest.md`.
 
 **Paragraph 1 — Chronological arc:**
 Begin with the earliest relevant work and trace the evolution to the most recent. Cite papers
@@ -230,47 +260,99 @@ characteristics (dataset size, bug type distribution, oracle strength).
 Write in academic English, past tense for describing prior work, present tense for our claims.
 Target 400-600 words for the full narrative. Avoid excessive hedging.
 
-### Step 7 — Save Outputs
+### Step 7 — Write manifest.md
 
-Save the complete synthesis (all cards + cross-paper analysis + narrative) to:
-```
-literature/synthesis/{TOPIC}_synthesis.md
-```
+Save `literature/synthesis/{TOPIC}/manifest.md` with this structure:
 
-Save the LaTeX comparison table to:
-```
-literature/synthesis/{TOPIC}_table.tex
-```
-
-The synthesis markdown file structure:
 ```markdown
-# Synthesis: {TOPIC} — {DATE}
+# Synthesis Manifest: {TOPIC}
+**Date**: {DATE} | **Papers**: {N} | **Clusters**: {K}
+**Skill version**: deep-paper-synthesis 2.0.0
 
 ## Papers in This Synthesis
-- [{title}]({url}) — {authors}, {venue} {year}
-...
 
-## Per-Paper Extraction Cards
-### Card 1: {Title}
-...
+### {Cluster Display Name} (`{cluster_slug}/`)
+- [{Title}](./{cluster_slug}/{paper_slug}.md) — {Authors}, {Venue} {Year} | Relevance: {score}/5
+- ...
+
+### {Cluster Display Name} (`{cluster_slug}/`)
+- ...
+
+## Comparison Table
+See [{TOPIC}_table.tex](./{TOPIC}_table.tex)
 
 ## Cross-Paper Analysis
-### Thematic Clusters
-...
-### Idea Evolution Timeline
-...
-### Open Problems
-...
 
-## Comparison Table (LaTeX source)
-See `literature/synthesis/{TOPIC}_table.tex`
+### Idea Evolution Timeline
+{3-4 sentence paragraph from Step 4b}
+
+### Open Problems
+{bullet list or table from Step 4c}
+
+### Conflicting Claims
+{list contradictions; omit section if none}
 
 ## Narrative Synthesis
-...
-(paste the 3-5 paragraphs here)
+{3-5 paragraphs from Step 6}
+
+---
+
+## Examined but Excluded
+{papers rejected after reading; omit section if none}
+- {Title} — {reason}
 ```
 
-### Step 8 — Update papers.csv
+The manifest is the entry point for any AI working with this literature set. Individual paper
+files are loaded on demand when detail about a specific paper is needed.
+
+### Step 8 — Write Paper Files and Table
+
+After the manifest is written, write all paper `.md` files and the LaTeX table. Write files in
+parallel where possible.
+
+**Per-paper file path:** `literature/synthesis/{TOPIC}/{cluster_slug}/{paper_slug}.md`
+
+**Per-paper file format:**
+```markdown
+---
+title: "{Full Paper Title}"
+authors: "{Author1}, {Author2}, ..."
+venue: "{Venue} {Year}"
+arxiv_id: "{arxiv_id or N/A}"
+url: "{canonical URL}"
+cluster: "{cluster_slug}"
+secondary_clusters: []
+paper_slug: "{paper_slug}"
+relevance_score: {1-5}
+status: synthesized
+---
+
+# [{Title}]({url})
+**Authors**: {authors} | **Venue**: {venue} {year} | **arXiv**: {arxiv_id}
+**Cluster**: [{cluster_display_name}](../{cluster_slug}/) | **Relevance**: {score}/5
+
+## Problem Statement
+...
+
+## Methodology / Approach
+...
+
+## Main Results
+...
+
+## Limitations
+...
+
+## Relation to This Work
+...
+
+**Gap phrase**: "..."
+**Cite in**: {Related Work | Results | Methods | All sections | Not cited}
+```
+
+**LaTeX table path:** `literature/synthesis/{TOPIC}/{TOPIC}_table.tex`
+
+### Step 9 — Update papers.csv
 
 For each paper that was successfully synthesized (even if abstract-only), update its `status`
 from `to-read` to `synthesized` in `literature/papers.csv`. Also update the `gap_notes` field
@@ -280,16 +362,16 @@ To update the CSV:
 1. Read the full CSV content.
 2. For each synthesized paper's row, change `status` from `to-read` to `synthesized`.
 3. Update `gap_notes` with the synthesis finding (1 sentence, CSV-escaped).
-4. Overwrite the file. Do NOT change the sort order here; preserve the existing row order.
+4. Overwrite the file. Do NOT change the sort order; preserve the existing row order.
 
 ---
 
 ## Handling Edge Cases
 
 ### Paper Without Open-Access PDF
-Use abstract + title only. Mark the extraction card header:
+Use abstract + title only. Mark the extraction card:
 ```
-[ABSTRACT ONLY — No open-access PDF found. Access via: {url}]
+**Access**: ABSTRACT ONLY — No open-access PDF found. Retrieve via: {url}
 ```
 Still complete all 5 card sections; use "Not determinable from abstract" for metrics.
 Recommend the user manually retrieve the PDF and re-run synthesis for that paper.
@@ -303,26 +385,34 @@ Focus on: Abstract, Introduction (full), Related Work (full), Methodology (secti
 Results (tables and key findings), Conclusion (full). Skip implementation details in excess.
 
 ### Contradictory Claims Between Papers
-Note contradictions explicitly in the Cross-Paper Analysis section under a subsection
-"Conflicting Claims." Include both citations and a sentence on which finding is more credible
+Note contradictions in `manifest.md` under the "Conflicting Claims" subsection.
+Include both citations and a sentence on which finding is more credible
 (based on dataset size, venue tier, reproducibility).
 
 ### Paper Is Actually Not Relevant After Reading
 Change status to `rejected` in papers.csv. Note the reason in `gap_notes`.
-Do not include it in the narrative synthesis, but mention it briefly in the triage report as
-"Examined but excluded: {reason}."
+Do not create a paper file for it. Add a brief note in the "Examined but Excluded" section of
+`manifest.md` with the reason.
+
+### Re-synthesizing a Single Paper
+Overwrite only that paper's `.md` file. Update the paper's entry in `manifest.md` (relevance
+score, cluster assignment if changed). Do not regenerate the full table or narrative unless
+requested.
 
 ---
 
 ## Quality Checklist
 
-Before saving the synthesis:
-- [ ] Every paper has a complete extraction card (all 5 sections filled)
+Before saving outputs:
+- [ ] Every paper has a complete extraction card file (all 5 sections filled)
 - [ ] No card section says "N/A" without explanation
+- [ ] Each paper file has complete YAML front matter
+- [ ] All paper files are placed under the correct `{cluster_slug}/` directory
+- [ ] `manifest.md` lists every paper with a working relative link to its file
 - [ ] The comparison table has consistent column definitions across all rows
 - [ ] The narrative synthesis cites all papers in the synthesis set (no orphaned papers)
 - [ ] Gap paragraph explicitly links to this paper's contributions (using `{{SYSTEM_NAME}}` from `project/research-focus.md`)
-- [ ] papers.csv has been updated with new statuses
+- [ ] papers.csv has been updated with new statuses and gap_notes
 - [ ] LaTeX table compiles without errors (verify \multicolumn counts match column count)
 
 ---
@@ -330,11 +420,13 @@ Before saving the synthesis:
 ## Integration with Other Skills
 
 - **paper-search-and-triage** must run first to populate `papers.csv` with `to-read` entries.
-- **research-gap-mapper** reads `synthesized` papers from `papers.csv` and the synthesis files
-  in `literature/synthesis/`. Run deep-paper-synthesis before running research-gap-mapper for
-  the most accurate gap map.
-- Narrative synthesis paragraphs are designed to paste directly into the Related Work section
-  of the ACL LaTeX paper at `paper/latex/acl_latex.tex`.
+- **research-gap-mapper** reads `synthesized` papers from `papers.csv` and the synthesis
+  directory. Point it at `literature/synthesis/{TOPIC}/manifest.md` for orientation, and at
+  individual paper files for detail. Run deep-paper-synthesis before research-gap-mapper.
+- **write-related-work** reads the narrative synthesis from `manifest.md` and uses the cluster
+  directory structure to navigate individual papers.
+- Narrative synthesis paragraphs in `manifest.md` are designed to paste directly into the
+  Related Work section of the ACL LaTeX paper at `paper/latex/acl_latex.tex`.
 
 ---
 
@@ -343,13 +435,27 @@ Before saving the synthesis:
 Full templates are in `skills/deep-paper-synthesis/references/synthesis-template.md`.
 Full LaTeX table patterns are in `skills/deep-paper-synthesis/references/latex-table-patterns.md`.
 
-### Minimal card header format:
+### Minimal paper file header:
 ```markdown
-### [{Title}]({url})
-**Authors**: {authors} | **Venue**: {venue} {year} | **arXiv**: {arxiv_id}
-**Status**: synthesized | **Relevance Score**: {1-5}
+---
+title: "{Full Paper Title}"
+authors: "{authors}"
+venue: "{Venue} {Year}"
+arxiv_id: "{arxiv_id or N/A}"
+url: "{url}"
+cluster: "{cluster_slug}"
+paper_slug: "{paper_slug}"
+relevance_score: {1-5}
+status: synthesized
+---
+```
+
+### Manifest paper list entry:
+```markdown
+- [{Title}](./{cluster_slug}/{paper_slug}.md) — {Authors}, {Venue} {Year} | Relevance: {score}/5
 ```
 
 ### Gap phrase format (for papers.csv gap_notes):
+```
 "{This paper}'s key limitation: {limitation}; our work addresses this by {contribution}."
 ```
