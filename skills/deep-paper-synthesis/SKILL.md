@@ -10,8 +10,8 @@ description: |
   in context", "what are the key takeaways from the to-read list", "summarize my reading list".
   Run this skill after paper-search-and-triage has populated the "to-read" list, or when the user
   directly provides paper IDs, PDF links, or titles to analyze.
-version: 2.0.0
-tools: Read, Glob, Grep, Bash, WebSearch, WebFetch, Write, Edit
+version: 3.0.0
+tools: Read, Glob, Grep, Bash, WebSearch, WebFetch, Write, Edit, Agent
 ---
 
 # Deep Paper Synthesis
@@ -23,8 +23,22 @@ This skill performs deep reading and synthesis of academic papers, producing:
   cross-paper analysis (the only file an AI needs to load for orientation)
 - **One `_table.tex`** containing the ACL-format LaTeX comparison table
 
-This structure keeps individual paper files small and AI-friendly (each fits in one context
-window), while the manifest provides the high-level view.
+## Context Management Architecture
+
+Reading many papers in one context fills up quickly. This skill avoids that with a
+**two-phase approach**:
+
+**Phase A — Clustering (main agent, abstracts only)**
+Fetch only the abstract for each paper. Assign clusters and slugs. The main agent never reads
+full PDFs.
+
+**Phase B — Full synthesis (one subagent per paper, run in parallel batches)**
+Each subagent receives one paper assignment. It fetches the full PDF, writes the extraction card
+file directly to disk, and returns only a compact **mini-summary** (~300 tokens) to the main
+agent. The main agent's context never holds raw paper content.
+
+After all subagents return, the main agent holds N × ~300 tokens of mini-summaries — regardless
+of how many papers there are — and uses these to write the manifest, table, and narrative.
 
 ## Output Structure
 
@@ -74,95 +88,159 @@ Record the final paper list. Assign a short `TOPIC` label (e.g., `llm_vuln_repai
 `apr_baselines`, `fuzzing_ml`) based on the cluster of papers selected. This label becomes the
 **directory name** for all synthesis outputs under `literature/synthesis/{TOPIC}/`.
 
-### Step 2 — Fetch Each Paper
+### Step 2 — Abstract Pass: Cluster Assignment (main agent)
 
-For each paper in the synthesis list:
+The main agent fetches only the **abstract** for each paper — not the full PDF. This is fast
+and keeps the main context small.
 
-1. Check if a PDF URL is available in `papers.csv` (`url` field). If it points to a PDF
-   (ends in `.pdf` or contains `arxiv.org/pdf`), use WebFetch to retrieve it.
+For each paper:
+1. If `papers.csv` has an `abstract` column already populated, use it directly.
+2. Otherwise fetch the arXiv abstract page: `https://arxiv.org/abs/{arxiv_id}` — parse just
+   the abstract paragraph. For non-arXiv papers, fetch the landing page at `url`.
+3. If the abstract is already in `papers.csv`, skip the fetch.
 
-2. If no direct PDF URL: try constructing the arXiv PDF URL:
-   `https://arxiv.org/pdf/{arxiv_id}`
+After collecting all abstracts, perform **thematic clustering** (see Step 4a below for the
+clustering logic). Derive `{cluster_slug}` and `{paper_slug}` for every paper before
+dispatching any subagents, since subagents need to know their output path.
 
-3. If the paper is paywalled with no open-access version:
-   - Use WebFetch to retrieve the Semantic Scholar page for the abstract, related work links, and
-     TLDR: `https://www.semanticscholar.org/paper/{paperId}`
-   - Fall back to the abstract + title for the extraction card. Mark the card with
-     `[ABSTRACT ONLY - no PDF access]`.
+**Output of this step:** a table mapping each paper to its cluster_slug, paper_slug, and
+full output path. Example:
 
-4. After retrieving the content, extract the text. For PDFs fetched via WebFetch, the content
-   will be HTML or text — parse out the paper body text.
+| paper | cluster_slug | paper_slug | output_path |
+|---|---|---|---|
+| Xia et al. 2023 | llm_based_repair | xia_2023 | literature/synthesis/llm_vuln_repair/llm_based_repair/xia_2023.md |
+| ... | | | |
 
-See `skills/deep-paper-synthesis/references/synthesis-template.md` for the exact paper card format.
+### Step 3 — Dispatch Per-Paper Subagents (parallel batches)
 
-### Step 3 — Draft Per-Paper Extraction Cards (in memory)
+Dispatch one subagent per paper using the Agent tool. Run in **parallel batches of 4–5** to
+avoid overwhelming the system. Do not run all subagents at once if N > 5.
 
-For each paper, draft a **paper extraction card** in memory. Do not write files yet — cluster
-assignments (Step 4a) determine the directory paths. Hold all cards until Step 4a is complete.
+Each subagent:
+1. Fetches the full paper PDF (or falls back to abstract-only if paywalled)
+2. Produces the complete extraction card
+3. Writes the card file to its assigned `output_path`
+4. Returns a **mini-summary** to the main agent (see format below)
 
-The card contains these sections:
+**The main agent must never read the full paper content itself.** All raw paper content stays
+inside the subagent's context and is discarded after the subagent writes its file.
 
-#### 3a. Problem Statement
-One concise paragraph (2-4 sentences):
-- What specific problem does this paper address?
-- Why does the problem matter (what breaks if it is not solved)?
-- What is the core research question or hypothesis?
+#### Subagent Prompt Template
 
-#### 3b. Key Methodology / Approach
-2-5 bullet points or a short paragraph covering:
-- Overall system or algorithm architecture
-- Key technical innovations (what makes this different from prior work)
-- Tools, datasets, or components used
-- Any novel training procedure, prompting strategy, or verification step
+Use this exact structure when constructing the prompt for each paper's subagent. Fill in the
+bracketed values:
 
-For LLM-based papers: note which models are used (GPT-4, Claude, open-source), prompting style
-(zero-shot, few-shot, chain-of-thought), and any fine-tuning.
-
-For domain-specific papers (e.g., APR): note the repair operator set, search strategy,
-oracle type, or other domain-specific design choices relevant to the paper.
-
-#### 3c. Main Results / Metrics
-
-Always capture:
-- Primary metric (e.g., patch correctness rate, plausibility rate, precision/recall, pass@k)
-- Benchmark / dataset used
-- Comparison baselines
-- Key quantitative finding (e.g., "achieves 43.2% correct patches vs. 28.1% for GPT-4 baseline")
-
-Format as a small table if multiple metrics are reported:
+---
 ```
-| Metric | This Paper | Best Baseline |
-|---|---|---|
-| Correct patch rate | 43.2% | 28.1% (GPT-4-base) |
-| Plausibility rate | 71.4% | 65.0% |
+You are synthesizing one academic paper as part of a larger literature review.
+
+## Your Assignment
+
+- **Title**: {title}
+- **Authors**: {authors}
+- **Venue**: {venue} {year}
+- **arXiv ID**: {arxiv_id}
+- **PDF URL**: {pdf_url}  (try https://arxiv.org/pdf/{arxiv_id} if no direct URL)
+- **Output file**: {output_path}
+- **Cluster**: {cluster_slug}
+- **Paper slug**: {paper_slug}
+
+## Instructions
+
+1. Fetch the full paper PDF using WebFetch at the PDF URL above. If the PDF is unavailable
+   (paywalled), fetch the Semantic Scholar page or arXiv abstract page instead and mark the
+   card `**Access**: ABSTRACT ONLY`.
+
+2. Write the extraction card to `{output_path}` using this exact format:
+
+---
+title: "{title}"
+authors: "{authors}"
+venue: "{venue} {year}"
+arxiv_id: "{arxiv_id}"
+url: "{canonical_url}"
+cluster: "{cluster_slug}"
+secondary_clusters: []
+paper_slug: "{paper_slug}"
+relevance_score: {1-5}
+status: synthesized
+---
+
+# [{title}]({canonical_url})
+**Authors**: {authors} | **Venue**: {venue} {year} | **arXiv**: {arxiv_id}
+**Cluster**: {cluster_slug} | **Relevance**: {score}/5
+
+## Problem Statement
+{2-4 sentences: precise problem, why it matters, research question}
+
+## Methodology / Approach
+{2-5 bullets: architecture, core innovation, LLM/model used, oracle/verifier, datasets}
+
+## Main Results
+| Metric | This Paper | Best Baseline | Notes |
+|---|---|---|---|
+| {primary metric} | {X} | {Y (Baseline)} | |
+
+**Key finding**: {1 sentence with the headline number}
+
+## Limitations
+- {scope limitation}
+- {oracle/methodology limitation}
+- {scale or generalization limitation}
+- {threats to validity}
+
+## Relation to This Work
+{1-3 sentences: supports/contradicts/extends our claims; gap our work fills; where to cite}
+
+**Gap phrase**: "{This paper}'s key limitation: {limitation}; our work addresses this by {contribution}."
+**Cite in**: {Related Work | Results | Methods | All sections | Not cited}
+
+---
+
+3. After writing the file, return ONLY the mini-summary below. Do not repeat the full card.
+
+## Mini-Summary
+
+- **paper_slug**: {paper_slug}
+- **title**: {title}
+- **authors**: {first author} et al.
+- **venue**: {venue} {year}
+- **cluster**: {cluster_slug}
+- **relevance**: {1-5}
+- **core_approach**: {1 sentence — what the system does}
+- **key_result**: {1 sentence — headline number and benchmark}
+- **main_limitation**: {1 sentence}
+- **gap_phrase**: "{gap phrase from card}"
+- **cite_in**: {sections}
+- **access**: {FULL PDF | ABSTRACT ONLY}
+- **written_to**: {output_path}
 ```
+---
 
-#### 3d. Limitations
+#### What to do if a subagent fails
 
-2-4 bullet points identifying:
-- Scope limitations (language, bug type, dataset size)
-- Methodological limitations (oracle assumptions, evaluation validity)
-- Known failure modes reported in the paper
-- Threats to validity noted by the authors
+If a subagent errors or returns no mini-summary:
+- Check if the file was written to disk (Read the output_path)
+- If the file exists: extract the mini-summary fields from the file manually
+- If the file is missing: re-dispatch the subagent for that paper alone before proceeding
 
-#### 3e. Relation to This Work
+### Step 4 — Cross-Paper Analysis (from mini-summaries)
 
-1-3 sentences written from the perspective of the paper being written. Answer:
-- Does this paper support, contradict, or extend our claims?
-- What gap does our work fill that this paper does not address?
-- Should this paper be cited in Related Work, Methodology, or Evaluation sections?
-
-Note the gap phrase; it will be written to `gap_notes` in `papers.csv` in Step 9.
-
-### Step 4 — Cross-Paper Analysis and Cluster Assignment
+By this point all subagents have returned their mini-summaries. The main agent works
+**only from mini-summaries** for all cross-paper analysis — never reading the card files.
 
 #### 4a. Thematic Clustering
 
-**Do this before writing any files.** Scan all drafted cards and assign each paper to a cluster.
-This determines the directory structure.
+Clustering was done in Step 2 from abstracts. Verify the assignments are consistent with
+what subagents reported in their mini-summaries (subagents may suggest a better cluster after
+reading the full paper). Update any cluster assignments if the subagent's suggestion is better.
+If a paper moves clusters, rename its file:
+```bash
+mv literature/synthesis/{TOPIC}/{old_cluster}/{paper_slug}.md \
+   literature/synthesis/{TOPIC}/{new_cluster}/{paper_slug}.md
+```
 
-Identify 3-5 thematic clusters across the papers. Derive cluster names from the papers
-themselves — do not assume a fixed set. Common cluster types that apply across domains:
+Cluster naming guidance — derive names from the papers themselves:
 
 1. **Core Method Papers** — papers proposing the primary technique used in each cluster
 2. **Baseline / Classical Approaches** — non-ML or earlier-generation approaches
@@ -170,42 +248,36 @@ themselves — do not assume a fixed set. Common cluster types that apply across
 4. **Survey / Empirical Studies** — papers analyzing the state of the field
 5. **Adjacent Methods** — related techniques from neighboring sub-fields
 
-For the specific domain, derive more precise cluster names from the paper abstracts.
-Assign each paper to its **primary cluster** (`cluster` field). A paper may appear in a
-secondary cluster too (record in `secondary_clusters` front matter field).
-
-After assigning clusters, derive `{cluster_slug}` and `{paper_slug}` for every paper.
-
 #### 4b. Idea Evolution Timeline
 
-Trace the chronological progression of key ideas in the domain:
-- When did the dominant technique (e.g., deep learning, LLMs, a specific algorithm) first appear?
+From mini-summaries, trace the chronological progression of key ideas:
+- When did the dominant technique first appear?
 - What preceded it, and what did it supersede?
 - What was the state of the art immediately before the paper being written?
 
-Write a 3-4 sentence paragraph tracing this arc. This goes in `manifest.md`.
+Write a 3-4 sentence paragraph. This goes in `manifest.md`.
 
 #### 4c. Open Problems Identification
 
-From the limitations sections of all cards, enumerate open problems that multiple papers share:
-- Which limitations appear in 3+ papers? (these are structural gaps in the field)
-- Which limitations are addressed by some papers but not others?
-- What does no paper in the set address? (this is where the paper being written contributes)
+From the `main_limitation` fields in all mini-summaries, enumerate structural gaps:
+- Which limitations appear in 3+ papers? (structural gaps in the field)
+- Which are addressed by some papers but not others?
+- What does no paper address? (the gap this paper fills)
 
 This goes in `manifest.md`.
 
 ### Step 5 — Generate ACL Comparison Table
 
-Build a LaTeX comparison table. Derive the comparison axes from the papers themselves
-and from `project/research-focus.md` (if it exists). Standard axes that work across domains:
+Build a LaTeX comparison table using the mini-summaries (do not read paper files).
+Derive comparison axes from the `core_approach`, `key_result`, and `main_limitation` fields,
+and from `project/research-focus.md` (if it exists).
 
 **Always include:**
 - Paper (short citation form, e.g., \citet{Author2024})
 - Venue + Year
 - Our Approach? (checkmark ✓ or dash —)
 
-**Domain-specific axes** — select from the following based on what differentiates papers
-in the set (typically 4-6 axes total):
+**Domain-specific axes** — select based on what differentiates papers (typically 4-6 axes):
 - Input type / language / modality
 - Task type or problem setting
 - Core technique / model family (LLM, classical ML, rule-based, etc.)
@@ -215,7 +287,7 @@ in the set (typically 4-6 axes total):
 
 Use the LaTeX table template from `references/latex-table-patterns.md`.
 
-Hold the table in memory for now; it will be written to disk in Step 8.
+Draft the table now; it will be written to disk in Step 8.
 
 Suggested column grouping:
 - Group 1: Approach (paper, venue, year)
@@ -225,7 +297,9 @@ Suggested column grouping:
 
 ### Step 6 — Write Narrative Synthesis
 
-Write 3-5 paragraphs of narrative synthesis. This content goes in `manifest.md`.
+Write 3-5 paragraphs of narrative synthesis from the mini-summaries. This content goes in
+`manifest.md`. Do not re-read the paper card files — the mini-summaries contain everything
+needed for the narrative.
 
 **Paragraph 1 — Chronological arc:**
 Begin with the earliest relevant work and trace the evolution to the most recent. Cite papers
@@ -267,7 +341,7 @@ Save `literature/synthesis/{TOPIC}/manifest.md` with this structure:
 ```markdown
 # Synthesis Manifest: {TOPIC}
 **Date**: {DATE} | **Papers**: {N} | **Clusters**: {K}
-**Skill version**: deep-paper-synthesis 2.0.0
+**Skill version**: deep-paper-synthesis 3.0.0
 
 ## Papers in This Synthesis
 
@@ -305,58 +379,24 @@ See [{TOPIC}_table.tex](./{TOPIC}_table.tex)
 The manifest is the entry point for any AI working with this literature set. Individual paper
 files are loaded on demand when detail about a specific paper is needed.
 
-### Step 8 — Write Paper Files and Table
+### Step 8 — Write the LaTeX Table
 
-After the manifest is written, write all paper `.md` files and the LaTeX table. Write files in
-parallel where possible.
-
-**Per-paper file path:** `literature/synthesis/{TOPIC}/{cluster_slug}/{paper_slug}.md`
-
-**Per-paper file format:**
-```markdown
----
-title: "{Full Paper Title}"
-authors: "{Author1}, {Author2}, ..."
-venue: "{Venue} {Year}"
-arxiv_id: "{arxiv_id or N/A}"
-url: "{canonical URL}"
-cluster: "{cluster_slug}"
-secondary_clusters: []
-paper_slug: "{paper_slug}"
-relevance_score: {1-5}
-status: synthesized
----
-
-# [{Title}]({url})
-**Authors**: {authors} | **Venue**: {venue} {year} | **arXiv**: {arxiv_id}
-**Cluster**: [{cluster_display_name}](../{cluster_slug}/) | **Relevance**: {score}/5
-
-## Problem Statement
-...
-
-## Methodology / Approach
-...
-
-## Main Results
-...
-
-## Limitations
-...
-
-## Relation to This Work
-...
-
-**Gap phrase**: "..."
-**Cite in**: {Related Work | Results | Methods | All sections | Not cited}
-```
+Paper files were already written by subagents in Step 3. This step only writes the table.
 
 **LaTeX table path:** `literature/synthesis/{TOPIC}/{TOPIC}_table.tex`
+
+Verify all paper files exist before writing the table:
+```bash
+ls literature/synthesis/{TOPIC}/*/  # confirm cluster dirs and paper files are present
+```
+
+If any paper file is missing, re-dispatch its subagent before writing the manifest.
 
 ### Step 9 — Update papers.csv
 
 For each paper that was successfully synthesized (even if abstract-only), update its `status`
-from `to-read` to `synthesized` in `literature/papers.csv`. Also update the `gap_notes` field
-with the key phrase from the Relation to This Work section (Step 3e).
+from `to-read` to `synthesized` in `literature/papers.csv`. Take the `gap_notes` value from
+the `gap_phrase` field in each paper's mini-summary.
 
 To update the CSV:
 1. Read the full CSV content.
@@ -403,10 +443,11 @@ requested.
 
 ## Quality Checklist
 
-Before saving outputs:
-- [ ] Every paper has a complete extraction card file (all 5 sections filled)
-- [ ] No card section says "N/A" without explanation
+Before finalizing:
+- [ ] All subagents have returned mini-summaries (no paper is missing)
+- [ ] Every paper file exists on disk at its assigned path (`ls literature/synthesis/{TOPIC}/*/`)
 - [ ] Each paper file has complete YAML front matter
+- [ ] No card section says "N/A" without explanation
 - [ ] All paper files are placed under the correct `{cluster_slug}/` directory
 - [ ] `manifest.md` lists every paper with a working relative link to its file
 - [ ] The comparison table has consistent column definitions across all rows

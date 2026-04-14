@@ -266,7 +266,7 @@ for any AI working with the literature set.
 ```markdown
 # Synthesis Manifest: {TOPIC}
 **Date**: {YYYY-MM-DD} | **Papers**: {N} | **Clusters**: {K}
-**Skill version**: deep-paper-synthesis 2.0.0
+**Skill version**: deep-paper-synthesis 3.0.0
 
 ## Papers in This Synthesis
 
