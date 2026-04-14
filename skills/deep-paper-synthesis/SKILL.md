@@ -121,8 +121,43 @@ silent write failures when a subagent's working directory differs from the main 
 
 ### Step 3 — Dispatch Per-Paper Subagents (parallel batches)
 
-Dispatch one subagent per paper using the Agent tool. Run in **parallel batches of 4–5** to
-avoid overwhelming the system. Do not run all subagents at once if N > 5.
+#### 3a. Pre-flight: ask the user for subagent model
+
+Before dispatching any subagents, ask the user:
+
+> "Which model should I use for the per-paper subagents — haiku (fastest, cheapest),
+> sonnet (recommended default), or opus (best for dense or complex papers)?"
+
+Record the answer as `{subagent_model}` and use it for every subagent in this session.
+
+#### 3b. Pre-flight: verify permissions
+
+Subagents inherit the same tool permissions as the main agent. Before dispatching, confirm the
+main agent itself can exercise the two critical operations:
+
+1. **WebFetch** — attempt a lightweight fetch (e.g., the arXiv abstract page for the first
+   paper). If it is blocked, stop and tell the user:
+   > "WebFetch is not permitted in this session. Paper subagents will not be able to fetch
+   > PDFs. Please allow WebFetch and restart, or provide pre-downloaded PDF paths."
+
+2. **Write** — attempt to write a small sentinel file at the synthesis directory root
+   (e.g., `{absolute_synthesis_dir}/.write_test`) and then delete it. If Write is blocked,
+   stop and tell the user:
+   > "Write is not permitted in this session. Paper subagents will not be able to save
+   > extraction cards. Please allow Write and restart."
+
+Only proceed to dispatching subagents if both checks pass.
+
+#### 3c. Dispatch
+
+Dispatch one subagent per paper using the Agent tool with:
+- `subagent_type`: `general-purpose` (requires Read, Write, WebFetch, Bash)
+- `model`: `{subagent_model}` as chosen by the user above
+- `isolation`: do **not** use worktree isolation — files must persist in the shared workspace
+- Run subagents in **parallel batches of 4–5**. Do not run all subagents simultaneously if
+  N > 5. Use background execution where supported so an entire batch runs in parallel.
+  After each batch completes, run the main agent gate (verify files on disk) before dispatching
+  the next batch.
 
 Each subagent:
 1. Fetches the full paper PDF (or falls back to abstract-only if paywalled)
