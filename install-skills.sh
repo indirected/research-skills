@@ -56,6 +56,10 @@ for skill_path in "$SKILLS_DIR"/*/; do
         continue
     fi
 
+    # Remove existing destination before copying so cp -r doesn't nest the
+    # directory inside itself (cp -r src/ existing-dest/ copies INTO dest/).
+    [[ -e "$dest_skill" ]] && rm -rf "$dest_skill"
+
     if cp -r "$skill_path" "$dest_skill" 2>/dev/null; then
         if [[ -e "$DEST/$skill_name" ]] && [[ "$FORCE" == true ]] && [[ "$skipped" -eq 0 ]]; then
             echo "  update $skill_name"
