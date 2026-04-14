@@ -322,7 +322,7 @@ SYSTEM & EXPERIMENTS
 
 PAPER WRITING
   [✓/~/○/·] write-background-section   [e.g. "background.tex (1.2KB)"]
-  [✓/~/○/·] write-methodology-section  [e.g. "method.tex exists but thin (180B)"]
+  [✓/~/○/·] write-methodology-section  [e.g. "methodology.tex exists but thin (180B)"]
   [✓/~/○/·] write-intro-and-abstract   [e.g. "no section file found"]
   [✓/~/○/·] write-related-work         [e.g. "needs related-work-clusters.md"]
   [✓/~/○/·] paper-experiments          [e.g. "needs result tables first"]
