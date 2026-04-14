@@ -23,14 +23,31 @@ This skill performs deep reading and synthesis of academic papers, producing:
   cross-paper analysis (the only file an AI needs to load for orientation)
 - **One `_table.tex`** containing the ACL-format LaTeX comparison table
 
+## MAIN AGENT RULES — READ BEFORE DOING ANYTHING
+
+These rules apply to the main agent (you, executing this skill) throughout the entire session:
+
+1. **NEVER fetch a paper PDF.** If you are about to call WebFetch on a URL ending in `.pdf`
+   or containing `/pdf/`, STOP. Full PDF reading is exclusively the subagents' job (Step 3).
+
+2. **NEVER read a paper extraction card file** to perform cross-paper analysis. Use only the
+   mini-summaries returned by subagents in your conversation context.
+
+3. **If you feel the urge to read a paper to "better understand" it before dispatching a
+   subagent** — resist it. The abstract (Step 2) is all you need for clustering.
+
+Violating these rules defeats the purpose of the architecture and will fill your context.
+
+---
+
 ## Context Management Architecture
 
 Reading many papers in one context fills up quickly. This skill avoids that with a
 **two-phase approach**:
 
 **Phase A — Clustering (main agent, abstracts only)**
-Fetch only the abstract for each paper. Assign clusters and slugs. The main agent never reads
-full PDFs.
+Fetch only the abstract page for each paper. Assign clusters and slugs. The main agent never
+reads full PDFs.
 
 **Phase B — Full synthesis (one subagent per paper, run in parallel batches)**
 Each subagent receives one paper assignment. It fetches the full PDF, writes the extraction card
@@ -90,14 +107,15 @@ Record the final paper list. Assign a short `TOPIC` label (e.g., `llm_vuln_repai
 
 ### Step 2 — Abstract Pass: Cluster Assignment (main agent)
 
-The main agent fetches only the **abstract** for each paper — not the full PDF. This is fast
-and keeps the main context small.
+**STOP if you are about to fetch a PDF.** This step fetches abstract pages only.
+If a URL contains `/pdf/` or ends in `.pdf`, do not fetch it — use the arXiv abstract page
+(`https://arxiv.org/abs/{arxiv_id}`) instead.
 
 For each paper:
-1. If `papers.csv` has an `abstract` column already populated, use it directly.
+1. If `papers.csv` has an `abstract` column already populated, use it directly — no fetch needed.
 2. Otherwise fetch the arXiv abstract page: `https://arxiv.org/abs/{arxiv_id}` — parse just
    the abstract paragraph. For non-arXiv papers, fetch the landing page at `url`.
-3. If the abstract is already in `papers.csv`, skip the fetch.
+3. Do not follow links to PDFs even if they appear on the abstract page.
 
 After collecting all abstracts, perform **thematic clustering** (see Step 4a below for the
 clustering logic). Derive `{cluster_slug}` and `{paper_slug}` for every paper before
