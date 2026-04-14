@@ -104,12 +104,20 @@ clustering logic). Derive `{cluster_slug}` and `{paper_slug}` for every paper be
 dispatching any subagents, since subagents need to know their output path.
 
 **Output of this step:** a table mapping each paper to its cluster_slug, paper_slug, and
-full output path. Example:
+**absolute** output path. Determine the absolute path with:
+```bash
+pwd  # run once to get the project root
+```
 
-| paper | cluster_slug | paper_slug | output_path |
+Example (if project root is `/workspace/myproject`):
+
+| paper | cluster_slug | paper_slug | absolute_output_path |
 |---|---|---|---|
-| Xia et al. 2023 | llm_based_repair | xia_2023 | literature/synthesis/llm_vuln_repair/llm_based_repair/xia_2023.md |
+| Xia et al. 2023 | llm_based_repair | xia_2023 | /workspace/myproject/literature/synthesis/llm_vuln_repair/llm_based_repair/xia_2023.md |
 | ... | | | |
+
+Always pass **absolute paths** to subagents. Relative paths are the most common cause of
+silent write failures when a subagent's working directory differs from the main agent's.
 
 ### Step 3 — Dispatch Per-Paper Subagents (parallel batches)
 
@@ -141,9 +149,18 @@ You are synthesizing one academic paper as part of a larger literature review.
 - **Venue**: {venue} {year}
 - **arXiv ID**: {arxiv_id}
 - **PDF URL**: {pdf_url}  (try https://arxiv.org/pdf/{arxiv_id} if no direct URL)
-- **Output file**: {output_path}
+- **Output file (absolute path)**: {absolute_output_path}
 - **Cluster**: {cluster_slug}
 - **Paper slug**: {paper_slug}
+
+## Hard constraints — read before doing anything else
+
+- WRITE THE FILE BEFORE RETURNING. Do not return until the Write tool has confirmed success.
+- DO NOT include the paper text, PDF content, or full extraction card in your response.
+  Your response must contain ONLY the mini-summary block defined below.
+- If you cannot write the file for any reason, return ONLY:
+  `FAILED: {paper_slug} — {reason}` and nothing else. Do not paste the card content as a fallback.
+- Use the absolute path exactly as given above. Do not change it or use a relative path.
 
 ## Instructions
 
@@ -151,7 +168,7 @@ You are synthesizing one academic paper as part of a larger literature review.
    (paywalled), fetch the Semantic Scholar page or arXiv abstract page instead and mark the
    card `**Access**: ABSTRACT ONLY`.
 
-2. Write the extraction card to `{output_path}` using this exact format:
+2. Write the extraction card to the absolute path above using this exact format:
 
 ---
 title: "{title}"
@@ -197,7 +214,11 @@ status: synthesized
 
 ---
 
-3. After writing the file, return ONLY the mini-summary below. Do not repeat the full card.
+3. After the Write tool confirms the file was written, verify it exists by reading it back
+   with the Read tool (first 5 lines only). If Read fails, report FAILED — do not paste content.
+
+4. Return ONLY the mini-summary below. Do not include the card, the paper text, or anything
+   else in your response.
 
 ## Mini-Summary
 
@@ -213,16 +234,28 @@ status: synthesized
 - **gap_phrase**: "{gap phrase from card}"
 - **cite_in**: {sections}
 - **access**: {FULL PDF | ABSTRACT ONLY}
-- **written_to**: {output_path}
+- **written_to**: {absolute_output_path}
+- **verified**: yes
 ```
 ---
 
-#### What to do if a subagent fails
+#### Main agent gate after all subagents return
 
-If a subagent errors or returns no mini-summary:
-- Check if the file was written to disk (Read the output_path)
-- If the file exists: extract the mini-summary fields from the file manually
-- If the file is missing: re-dispatch the subagent for that paper alone before proceeding
+**Before proceeding to Step 4**, the main agent must verify every paper file is on disk:
+
+```bash
+ls {absolute_synthesis_dir}/{TOPIC}/*/
+```
+
+For each expected paper file, confirm it appears in the output. If any file is missing:
+1. Check if the subagent returned `FAILED: ...` — if so, re-dispatch that paper's subagent alone.
+2. If the subagent returned a mini-summary but the file is absent, the write silently failed —
+   re-dispatch that paper's subagent alone.
+3. If a subagent returned the card content in its response body instead of writing to disk,
+   write the content to the correct path yourself using the Write tool, then continue.
+   Do not let this content remain in the conversation context any longer than necessary.
+
+Do not proceed to Step 4 until all paper files are confirmed on disk.
 
 ### Step 4 — Cross-Paper Analysis (from mini-summaries)
 
