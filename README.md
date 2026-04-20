@@ -8,15 +8,15 @@ These skills are intentionally **not a pipeline**. There is no required order, n
 
 | Skill | Use when you're… |
 |---|---|
-| `project-init` | Starting a new research project and want to capture identity (name, area, venue, paper paths) in a small notes file you can grep later. Optional. |
-| `read-paper` | Doing a deep read of a single paper — extracting claims, separating empirical from theoretical, identifying hidden assumptions, judging fairness, positioning vs. your own work. |
-| `synthesize-literature` | Looking across a stack of paper-reading notes — finding themes, surfacing consensus and contradictions, identifying real research gaps, spotting methodological monocultures. |
-| `brainstorm-ideas` | Generating new research ideas — from a literature synthesis, from current results, from a stuck experiment, or from scratch. Audits each idea on falsifiability, importance, tractability. |
-| `frame-research` | Sharpening a fuzzy idea into a falsifiable problem — single-sentence statement, why-important / why-hard / why-unsolved triad, contribution list. The same move serves intros, gap-framings, and grant context. |
-| `design-experiments` | Planning the empirical evaluation — datasets, baselines, metrics, ablations, statistical protocol, reproducibility, ML-era pitfalls (contamination, LLM-as-judge bias, prompt sensitivity, closed-model reproducibility, fair compute comparison). |
-| `write-paper` | Writing or improving any section of a paper — intro, related work, method, experiments, abstract, figures, tables. Universal writing principles + section-specific guidance loaded only for the section in play. |
-| `review-paper` | Self-reviewing a near-complete draft as an adversarial reviewer would — structured sweep over the top-10 rejection reasons + ML-era pitfalls, prioritized issue list with concrete fixes. |
-| `respond-to-reviews` | Drafting the rebuttal after external reviews come back — comment triage, response strategies (concede / defend / clarify / decline / commit), revision change list. |
+| `research-project-init` | Starting a new research project and want to capture identity (name, area, venue, paper paths) in a small notes file you can grep later. Optional. |
+| `research-read-paper` | Doing a deep read of a single paper — extracting claims, separating empirical from theoretical, identifying hidden assumptions, judging fairness, positioning vs. your own work. |
+| `research-synthesize-literature` | Looking across a stack of paper-reading notes — finding themes, surfacing consensus and contradictions, identifying real research gaps, spotting methodological monocultures. |
+| `research-brainstorm-ideas` | Generating new research ideas — from a literature synthesis, from current results, from a stuck experiment, or from scratch. Audits each idea on falsifiability, importance, tractability. |
+| `research-frame-research` | Sharpening a fuzzy idea into a falsifiable problem — single-sentence statement, why-important / why-hard / why-unsolved triad, contribution list. The same move serves intros, gap-framings, and grant context. |
+| `research-design-experiments` | Planning the empirical evaluation — datasets, baselines, metrics, ablations, statistical protocol, reproducibility, ML-era pitfalls (contamination, LLM-as-judge bias, prompt sensitivity, closed-model reproducibility, fair compute comparison). |
+| `research-write-paper` | Writing or improving any section of a paper — intro, related work, method, experiments, abstract, figures, tables. Universal writing principles + section-specific guidance loaded only for the section in play. |
+| `research-review-paper` | Self-reviewing a near-complete draft as an adversarial reviewer would — structured sweep over the top-10 rejection reasons + ML-era pitfalls, prioritized issue list with concrete fixes. |
+| `research-respond-to-reviews` | Drafting the rebuttal after external reviews come back — comment triage, response strategies (concede / defend / clarify / decline / commit), revision change list. |
 
 ## Design principles
 
@@ -48,22 +48,22 @@ research-skills/
 │                                        the source of several principles in
 │                                        review-paper and write-paper
 └── skills/
-    ├── project-init/
+    ├── research-project-init/
     │   └── SKILL.md
-    ├── read-paper/
+    ├── research-read-paper/
     │   ├── SKILL.md
     │   └── assets/reading-notes-template.md
-    ├── synthesize-literature/
+    ├── research-synthesize-literature/
     │   ├── SKILL.md
     │   └── assets/synthesis-template.md
-    ├── brainstorm-ideas/
+    ├── research-brainstorm-ideas/
     │   └── SKILL.md
-    ├── frame-research/
+    ├── research-frame-research/
     │   └── SKILL.md
-    ├── design-experiments/
+    ├── research-design-experiments/
     │   ├── SKILL.md
     │   └── references/ml-evaluation-pitfalls.md
-    ├── write-paper/
+    ├── research-write-paper/
     │   ├── SKILL.md
     │   └── references/
     │       ├── section-intro.md
@@ -72,11 +72,11 @@ research-skills/
     │       ├── section-experiments.md
     │       ├── section-abstract.md
     │       └── figures-and-tables.md
-    ├── review-paper/
+    ├── research-review-paper/
     │   ├── SKILL.md
     │   ├── references/top-10-rejection-reasons.md
     │   └── assets/review-report-template.md
-    └── respond-to-reviews/
+    └── research-respond-to-reviews/
         ├── SKILL.md
         ├── references/response-patterns.md
         └── assets/rebuttal-template.md
@@ -86,16 +86,16 @@ research-skills/
 
 You don't have to follow any sequence, but a common path:
 
-1. **`project-init`** — capture project identity in a notes file (optional).
-2. **`read-paper`** (× many) — deep-read each closely-related paper into a structured notes file.
-3. **`synthesize-literature`** — cluster reading notes into themes; surface gaps.
-4. **`brainstorm-ideas`** — generate candidate research ideas from the synthesis.
-5. **`frame-research`** — sharpen the chosen idea into a falsifiable problem with a contribution list.
-6. **`design-experiments`** — design the evaluation that would substantiate (or refute) the contribution.
+1. **`research-project-init`** — capture project identity in a notes file (optional).
+2. **`research-read-paper`** (× many) — deep-read each closely-related paper into a structured notes file.
+3. **`research-synthesize-literature`** — cluster reading notes into themes; surface gaps.
+4. **`research-brainstorm-ideas`** — generate candidate research ideas from the synthesis.
+5. **`research-frame-research`** — sharpen the chosen idea into a falsifiable problem with a contribution list.
+6. **`research-design-experiments`** — design the evaluation that would substantiate (or refute) the contribution.
 7. *(run experiments)*
-8. **`write-paper`** — draft and iterate on each section; same skill, different sections.
-9. **`review-paper`** — adversarial self-review before submission.
-10. **`respond-to-reviews`** — when the reviews come back.
+8. **`research-write-paper`** — draft and iterate on each section; same skill, different sections.
+9. **`research-review-paper`** — adversarial self-review before submission.
+10. **`research-respond-to-reviews`** — when the reviews come back.
 
 Loop and re-invoke as needed. Most sections of most projects get multiple passes through `write-paper`, multiple new reads via `read-paper`, and multiple ideas through `brainstorm-ideas`.
 
@@ -103,8 +103,8 @@ Loop and re-invoke as needed. Most sections of most projects get multiple passes
 
 A few skills point to references in another skill's directory rather than duplicating content:
 
-- `review-paper` reads `design-experiments/references/ml-evaluation-pitfalls.md` (single-source for ML-era pitfall content).
-- `review-paper` references `Keogh_SIGKDD09_tutorial.md` (in repo root) for backing principles.
+- `research-review-paper` reads `research-design-experiments/references/ml-evaluation-pitfalls.md` (single-source for ML-era pitfall content).
+- `research-review-paper` references `Keogh_SIGKDD09_tutorial.md` (in repo root) for backing principles.
 
 The model has filesystem access, so cross-directory reads are fine; we keep one canonical copy per concept.
 
