@@ -1,234 +1,123 @@
-# Research Workflow Skills
+# Research Skills
 
-Claude Code skills for end-to-end academic research, from literature discovery through paper submission.
-**These skills are project-agnostic** — they work for any research paper in any domain by reading
-configuration from the `project/` directory (created by `project-init`).
+Claude Code skills for academic research — from reading papers, through framing problems and designing experiments, to writing and rebutting. Built around the **conceptual moves** that make a research project succeed at top ML / AI / NLP venues.
 
----
+These skills are intentionally **not a pipeline**. There is no required order, no shared state directory, no skill that depends on another's output. Each one captures a hard cognitive task you do during research; you invoke whichever fits the moment.
 
-## Quick Start
+## The 9 skills
 
-**Step 1**: Run `project-init` once to set up project configuration:
-> "initialize project" or "start new project"
-
-This creates the `project/` directory with a few active config files and placeholder files
-for the rest. The `project/` directory is a **living config** — it starts sparse and fills
-in as you make progress through the research workflow. You do not need to know your system
-design, related work, baselines, or results to run this.
-
-**Step 2**: Use any skill. They will read from `project/` and fill in placeholders as you go.
-
----
-
-## Skill Families
-
-### Family 0 — Project Setup (Run First)
-
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `project-init` | "initialize project", "start new project", "set up project context" | Asks 3 short groups of questions (project identity, venue, paper paths) and creates the `project/` directory — prerequisite for all other skills |
-
-**Active config files created** (populated from your answers at init time):
-`project/research-focus.md`, `project/venue-config.md`, `project/paper-paths.md`
-
-**Placeholder files created** (written at init, populated by other skills as the project evolves):
-
-| File | Populated by |
+| Skill | Use when you're… |
 |---|---|
-| `project/background-concepts.md` | `write-background-section` |
-| `project/system-design.md` | You, incrementally, as you design the system |
-| `project/contributions.md` | You, after experiments are complete |
-| `project/related-work-clusters.md` | `write-related-work` (derived from literature pipeline) |
-| `project/experiment-config.md` | `experiment-designer` |
+| `project-init` | Starting a new research project and want to capture identity (name, area, venue, paper paths) in a small notes file you can grep later. Optional. |
+| `read-paper` | Doing a deep read of a single paper — extracting claims, separating empirical from theoretical, identifying hidden assumptions, judging fairness, positioning vs. your own work. |
+| `synthesize-literature` | Looking across a stack of paper-reading notes — finding themes, surfacing consensus and contradictions, identifying real research gaps, spotting methodological monocultures. |
+| `brainstorm-ideas` | Generating new research ideas — from a literature synthesis, from current results, from a stuck experiment, or from scratch. Audits each idea on falsifiability, importance, tractability. |
+| `frame-research` | Sharpening a fuzzy idea into a falsifiable problem — single-sentence statement, why-important / why-hard / why-unsolved triad, contribution list. The same move serves intros, gap-framings, and grant context. |
+| `design-experiments` | Planning the empirical evaluation — datasets, baselines, metrics, ablations, statistical protocol, reproducibility, ML-era pitfalls (contamination, LLM-as-judge bias, prompt sensitivity, closed-model reproducibility, fair compute comparison). |
+| `write-paper` | Writing or improving any section of a paper — intro, related work, method, experiments, abstract, figures, tables. Universal writing principles + section-specific guidance loaded only for the section in play. |
+| `review-paper` | Self-reviewing a near-complete draft as an adversarial reviewer would — structured sweep over the top-10 rejection reasons + ML-era pitfalls, prioritized issue list with concrete fixes. |
+| `respond-to-reviews` | Drafting the rebuttal after external reviews come back — comment triage, response strategies (concede / defend / clarify / decline / commit), revision change list. |
 
----
+## Design principles
 
-### Family 1 — Literature Intelligence
+- **Each skill is independent.** No skill is a prerequisite for another. Invoke whichever fits the cognitive task at hand. The output of one (e.g., a literature synthesis) is often a *useful input* to another (e.g., framing a problem), but you bring the file across yourself — there's no enforced pipeline.
+- **The user decides where outputs go.** Skills suggest a default file location and ask; they don't force a directory layout on your project.
+- **Conceptual depth over logistics.** The skills embed "how to read a paper deeply" or "how to frame a falsifiable problem" rather than "where to save the third draft of the methodology section".
+- **Progressive disclosure.** Each `SKILL.md` is the always-loaded entry point. Larger skills have `references/` (loaded only when needed) and `assets/` (output templates) — the model fetches them when relevant, not all at once.
+- **Modern ML/AI/NLP focused.** Evaluation pitfalls (contamination, LLM-as-judge bias, prompt sensitivity, closed-model reproducibility) are first-class concerns, not afterthoughts.
 
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `paper-search-and-triage` | "find new papers", "update literature tracker", "search for related work" | Derives search queries from `project/research-focus.md`, queries Semantic Scholar + arXiv + ACL Anthology, deduplicates against `literature/papers.csv`, generates a domain-specific relevance rubric, produces a dated triage report |
-| `deep-paper-synthesis` | "synthesize papers", "compare papers", "deep read these papers" | Extracts methodology/results/limitations per paper, builds a comparison table, writes a narrative synthesis for Related Work |
-| `research-gap-mapper` | "map research gaps", "what hasn't been done", "frame our problem" | Derives research axes from `project/research-focus.md`, builds a coverage matrix from synthesized papers, ranks open gaps by importance × feasibility, drafts a 2-paragraph problem motivation |
+## Installation
 
-**Prerequisite:** `project/research-focus.md` (from `project-init`)
-**State files:** `literature/papers.csv`, `literature/relevance-rubric.md`, `literature/synthesis/`, `literature/gap_map.md`
+Run from this directory:
 
----
-
-### Family 2 — Experiment Intelligence
-
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `experiment-designer` | "design experiments", "plan experiments for [hypothesis]", "which baselines should I include" | Reads dataset paths and metric names from `project/experiment-config.md`, decomposes a hypothesis into conditions/metrics/baselines, estimates compute cost, writes `experiments/plan_YYYYMMDD.md` |
-| `experiment-runner-monitor` | "run the benchmark", "launch experiments", "start the experiment" | Reads run command template from `project/experiment-config.md`, validates environment, launches run, monitors for early failures, parses results |
-| `error-cluster-and-fix-proposer` | "cluster failures", "analyze errors", "propose improvements" | Reads result schema from `project/experiment-config.md`, clusters failures by error pattern, proposes targeted fixes — **requires your approval before writing any changes** |
-
-**Prerequisite:** `project/research-focus.md` (from `project-init`); `project/experiment-config.md` is populated by `experiment-designer` before running experiments
-**State files:** `experiments/plan_*.md`, `experiments/runs/RUN_ID/`, `experiments/error_clusters_*.md`
-
----
-
-### Family 3 — Paper Writing (LaTeX / Overleaf)
-
-All writing skills read from `project/` config, enforce anonymization per `project/venue-config.md`,
-and remind you to `git push` from `paper/` to sync with Overleaf.
-
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `write-background-section` | "write background section", "write preliminaries", "add technical background" | Reads concepts from `project/background-concepts.md`; drafts one subsection per concept with definition, mechanism, and connection to the paper |
-| `write-methodology-section` | "write methodology", "describe our approach", "write the design section" | Reads pipeline and components from `project/system-design.md`; translates into system design prose with algorithm blocks and figure stubs |
-| `write-intro-and-abstract` | "write introduction", "draft abstract", "write contributions section" | Reads contributions from `project/contributions.md`; drafts Introduction (hook → problem → gap → contributions → roadmap) + Abstract within venue word limit |
-| `write-related-work` | "write related work", "position our work relative to prior art" | Derives thematic clusters from the literature pipeline (`literature/synthesis/`, `literature/gap_map.md`, `literature/papers.csv`) if `project/related-work-clusters.md` is still a placeholder; confirms clusters with user; writes 1–2 paragraphs per cluster with explicit differentiation from {{SYSTEM_NAME}} |
-| `paper-experiments` | "write experiments section", "write evaluation section", "draft results section" | Reads metrics from `project/experiment-config.md`; drafts Setup, Baselines, Main Results, Ablation, and Error Analysis subsections |
-| `latex-compile-and-check` | "compile the paper", "check paper formatting", "pre-submission check" | Runs full pdflatex build, parses log, checks page count, verifies citations/refs, anonymization scan, outputs dated checklist |
-
-**Prerequisite:** `project/research-focus.md`, `project/paper-paths.md`, `project/venue-config.md` (all from `project-init`). The remaining config files (`background-concepts.md`, `system-design.md`, `contributions.md`, `related-work-clusters.md`) are populated by other skills or by you before running the corresponding writing skill.
-**State files:** `paper/latex/sections/`, `paper/tables/`, `paper/figures/`, `paper/submission_checklist_*.md`
-
----
-
-### Family 4 — Reproduction & Validation
-
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `paper-reproduce-prior` | "reproduce this paper", "implement this paper", "extract tables from paper" | Reads a prior paper (arXiv URL or PDF), extracts all tables and quantitative claims, scaffolds one Python script per table — **requires your approval before writing code** |
-| `result-analyzer-and-table-gen` | "analyze results", "generate results table", "write results section" | Reads metric names from `project/experiment-config.md`; generates ACL booktabs LaTeX tables + matplotlib figures, drafts results section |
-| `table-extractor-and-tracker` | "are the numbers in the paper up to date", "numbers tracker", "stale numbers" | Maps every numeric claim in the paper to its source result file; flags any stale values when results change |
-| `result-reproduction-verifier` | "reproduce results", "verify paper claims", "sanity check our numbers" | Re-runs a stratified subset of cases, compares reproduced vs. claimed results, outputs PASS/WITHIN\_VARIANCE/FAIL report |
-| `artifact-packager` | "package artifact", "prepare code release", "artifact evaluation" | Privacy-scans codebase, curates `artifact/` directory, writes artifact README + LaTeX appendix per ACM AE / USENIX AE / ACL checklists |
-
-**State files:** `paper/numbers_tracker.json`, `paper/stale_numbers_*.md`, `experiments/reproduction/`, `artifact/`, `reproduction/PAPER_SLUG/`
-
----
-
-### Family 5 — Submission & Author Iteration
-
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `submission-manager` | "submission checklist", "prepare for [venue] submission", "am I ready to submit" | Reads venue from `project/venue-config.md`; runs venue-specific compliance check, generates backwards timeline from deadline |
-| `reviewer-response-drafter` | "respond to reviewers", "draft rebuttal", "write reviewer response" | Parses reviewer comments, classifies concern type, drafts per-comment responses with evidence, produces a prioritized change list |
-| `camera-ready-finalizer` | "camera ready", "finalize paper", "de-anonymize paper" | Reads LaTeX paths from `project/paper-paths.md`; switches review → final mode, adds author block + acknowledgments, applies reviewer changes, verifies final page count |
-
-**State files:** `paper/submission/VENUE_YYYY/`, `paper/reviews/`
-
----
-
-### Family 6 — Ideas & Research Strategy
-
-| Skill | Trigger | Purpose |
-|---|---|---|
-| `new-idea-generator` | "generate new ideas", "what should we work on next", "brainstorm research directions" | Reads research focus from `project/research-focus.md`, derives arxiv search queries dynamically, combines gap map + results + live arxiv → ranked idea candidates — **requires your approval before creating hypothesis files** |
-| `ablation-designer` | "design ablation study", "what should I ablate", "isolate contributions" | Reads components from `project/system-design.md`, proposes principled remove/degrade/substitute conditions, estimates compute cost, designs ablation table |
-| `grant-context-framer` | "write grant proposal", "NSF proposal", "DARPA proposal", "grant context" | Reads research context from `project/research-focus.md`, maps to agency priorities, drafts research context + broader impact + specific aims — **requires your approval before saving files** |
-
-**State files:** `experiments/hypothesis_*.md`, `experiments/ablation_plan_*.md`, `grants/AGENCY_YYYY/`
-
----
-
-## Pipeline Overview
-
-```
-project-init  ←── Run this FIRST for any new paper
-     │
-     ▼
-[project/ config directory]
-     │
-     ├──► paper-search-and-triage
-     │    deep-paper-synthesis
-     │    research-gap-mapper
-     │         │
-     │         ▼
-     ├──► experiment-designer ──► experiment-runner-monitor
-     │                            error-cluster-and-fix-proposer
-     │                                 │
-     │                                 ▼
-     │                          result-analyzer-and-table-gen
-     │                          table-extractor-and-tracker
-     │                                 │
-     │         ┌───────────────────────┘
-     │         ▼
-     └──► write-background-section
-          write-methodology-section
-          write-related-work
-          paper-experiments
-          write-intro-and-abstract   ◄── (after results exist)
-               │
-               ▼
-          latex-compile-and-check
-          result-reproduction-verifier
-          artifact-packager
-               │
-               ▼
-          submission-manager
-          reviewer-response-drafter  ◄── (after reviews received)
-          camera-ready-finalizer     ◄── (after acceptance)
-
-  Separately:
-  paper-reproduce-prior  ◄── (when implementing a prior paper)
-  new-idea-generator     ◄── (anytime, for next paper ideas)
-  grant-context-framer   ◄── (when writing a grant proposal)
+```bash
+bash install-skills.sh           # install for the current user (~/.claude/skills/)
+bash install-skills.sh --project # install into ./.claude/skills/ for the current project
+bash install-skills.sh --force   # overwrite existing installations
 ```
 
----
+Each invocation copies the `skills/<name>/` directory into the destination.
 
-## State Directory Convention
+## Repository layout
 
 ```
-{project_root}/
-├── project/                     ← Created by project-init; living config, grows over time
-│   ├── research-focus.md        # [active at init] Project name, area, problem statement
-│   ├── venue-config.md          # [active at init] Venue, format, page limit, deadline
-│   ├── paper-paths.md           # [active at init] main_tex, bibliography, sections_dir, figures_dir
-│   ├── background-concepts.md   # [placeholder → filled by write-background-section]
-│   ├── system-design.md         # [placeholder → filled by you as system design evolves]
-│   ├── contributions.md         # [placeholder → filled by you after experiments]
-│   ├── related-work-clusters.md # [placeholder → derived by write-related-work from literature/]
-│   └── experiment-config.md     # [placeholder → filled by experiment-designer]
-│
-├── literature/
-│   ├── papers.csv               # Living literature tracker
-│   ├── relevance-rubric.md      # Domain-specific relevance scoring guide
-│   ├── synthesis/               # Per-topic synthesis files + LaTeX tables
-│   └── gap_map.md               # Coverage matrix + ranked gaps
-│
-├── experiments/
-│   ├── plan_YYYYMMDD.md         # Experiment protocol
-│   ├── hypothesis_*.md          # Approved research ideas
-│   ├── runs/RUN_ID/             # Result files per benchmark run
-│   ├── ablation_plan_*.md
-│   └── reproduction/
-│
-├── paper/                       # Overleaf git submodule
-│   └── latex/
-│       ├── [main].tex           # Main document (path in project/paper-paths.md)
-│       ├── custom.bib           # All new citations go here
-│       ├── sections/            # One file per section
-│       ├── tables/              # Generated LaTeX tables
-│       └── figures/             # Generated PDF figures
-│
-├── reproduction/PAPER_SLUG/     # Prior paper reproduction (paper-reproduce-prior)
-├── ideas/                       # Approved hypothesis files
-├── grants/AGENCY_YYYY/          # Grant proposal drafts
-└── artifact/                    # Camera-ready code release
+research-skills/
+├── README.md                          ← this file
+├── install-skills.sh                  ← install to ~/.claude/skills/ (or project-local)
+├── Keogh_SIGKDD09_tutorial.md         ← reference: Keogh's reviewing tutorial,
+│                                        the source of several principles in
+│                                        review-paper and write-paper
+└── skills/
+    ├── project-init/
+    │   └── SKILL.md
+    ├── read-paper/
+    │   ├── SKILL.md
+    │   └── assets/reading-notes-template.md
+    ├── synthesize-literature/
+    │   ├── SKILL.md
+    │   └── assets/synthesis-template.md
+    ├── brainstorm-ideas/
+    │   └── SKILL.md
+    ├── frame-research/
+    │   └── SKILL.md
+    ├── design-experiments/
+    │   ├── SKILL.md
+    │   └── references/ml-evaluation-pitfalls.md
+    ├── write-paper/
+    │   ├── SKILL.md
+    │   └── references/
+    │       ├── section-intro.md
+    │       ├── section-related-work.md
+    │       ├── section-method.md
+    │       ├── section-experiments.md
+    │       ├── section-abstract.md
+    │       └── figures-and-tables.md
+    ├── review-paper/
+    │   ├── SKILL.md
+    │   ├── references/top-10-rejection-reasons.md
+    │   └── assets/review-report-template.md
+    └── respond-to-reviews/
+        ├── SKILL.md
+        ├── references/response-patterns.md
+        └── assets/rebuttal-template.md
 ```
 
----
+## A typical research project
 
-## Human Approval Gates
+You don't have to follow any sequence, but a common path:
 
-Three skills pause and wait for explicit input before taking action:
+1. **`project-init`** — capture project identity in a notes file (optional).
+2. **`read-paper`** (× many) — deep-read each closely-related paper into a structured notes file.
+3. **`synthesize-literature`** — cluster reading notes into themes; surface gaps.
+4. **`brainstorm-ideas`** — generate candidate research ideas from the synthesis.
+5. **`frame-research`** — sharpen the chosen idea into a falsifiable problem with a contribution list.
+6. **`design-experiments`** — design the evaluation that would substantiate (or refute) the contribution.
+7. *(run experiments)*
+8. **`write-paper`** — draft and iterate on each section; same skill, different sections.
+9. **`review-paper`** — adversarial self-review before submission.
+10. **`respond-to-reviews`** — when the reviews come back.
 
-- **`error-cluster-and-fix-proposer`** — presents proposed prompt/code changes; only implements what you select
-- **`new-idea-generator`** — presents ranked idea candidates; only creates hypothesis files for approved ideas
-- **`grant-context-framer`** — presents all drafted sections; only saves to `grants/` after approval
-- **`paper-reproduce-prior`** — presents extraction results and checklist; only writes code stubs after approval
+Loop and re-invoke as needed. Most sections of most projects get multiple passes through `write-paper`, multiple new reads via `read-paper`, and multiple ideas through `brainstorm-ideas`.
 
----
+## Cross-skill references
 
-## Notes
+A few skills point to references in another skill's directory rather than duplicating content:
 
-- All writing skills check `review_mode` in `project/venue-config.md` and enforce anonymization automatically
-- New BibTeX entries go to the bibliography file specified in `project/paper-paths.md`
-- `paper/` is typically a git submodule linked to Overleaf; all writing skills remind you to `git push` from `paper/` to sync
-- **To adapt for a new project**: run `project-init` — all skills will automatically use the new project's configuration
+- `review-paper` reads `design-experiments/references/ml-evaluation-pitfalls.md` (single-source for ML-era pitfall content).
+- `review-paper` references `Keogh_SIGKDD09_tutorial.md` (in repo root) for backing principles.
+
+The model has filesystem access, so cross-directory reads are fine; we keep one canonical copy per concept.
+
+## Adapting for your workflow
+
+These skills make few assumptions. To customize:
+
+- Edit any `SKILL.md` to match your venue's conventions, your group's norms, or your personal preferences.
+- Add references / assets as you discover patterns specific to your domain.
+- Re-run `install-skills.sh --force` to push changes to `~/.claude/skills/`.
+
+## Background
+
+This suite started as a 26-skill project with a hardcoded pipeline and a shared `project/` config directory. After real-world use, the pipeline coupling and the per-artifact granularity became friction. This 9-skill design replaces it: each skill embeds a hard conceptual move; nothing forces an order; the user owns the file layout.
+
+For deep context on the principles, see `Keogh_SIGKDD09_tutorial.md` — the underlying tutorial that several of these skills draw from.
