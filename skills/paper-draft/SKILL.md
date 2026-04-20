@@ -129,7 +129,11 @@ Process sections in this order. The order matters for \input assembly in main.te
 - **Stub file**: `{sections_dir}/methodology.tex`
 
 ### Section 4: Related Work (`related_work.tex`)
-- **Prerequisite**: `project/related-work-clusters.md` is populated
+- **Prerequisite**: any literature exists — `literature/papers.csv` has entries, OR any files
+  exist under `literature/synthesis/`, OR `literature/gap_map.md` exists.
+  `write-related-work` will derive and populate `project/related-work-clusters.md` itself
+  (Step 0b) if that file is missing or a placeholder — do NOT treat a missing clusters file
+  as a blocker.
 - **Writing skill**: `write-related-work`
 - **Stub file**: `{sections_dir}/related_work.tex`
 
@@ -259,15 +263,15 @@ TODO: Datasets, hyperparameters, compute infrastructure.
 ### Stub: Related Work
 
 ```latex
-% TODO: related_work — populate project/related-work-clusters.md then run write-related-work
-% Prerequisites missing: project/related-work-clusters.md is placeholder or absent
+% TODO: related_work — no literature found; run paper-search-and-triage then write-related-work
+% Prerequisites missing: no papers.csv, no literature/synthesis/ content, no literature/gap_map.md
 
 \section{Related Work}
 \label{sec:related}
 
-\textit{\textbf{TODO:} Related work placeholder. Run \texttt{paper-search-and-triage},
-\texttt{deep-paper-synthesis}, and \texttt{research-gap-mapper} to populate
-\texttt{project/related-work-clusters.md}, then run \texttt{write-related-work}.}
+\textit{\textbf{TODO:} Related work placeholder. Run \texttt{paper-search-and-triage} to collect
+papers, then run \texttt{write-related-work} directly — it will derive thematic clusters
+automatically from available literature.}
 
 \subsection{TODO: Research Area 1}
 TODO: Survey of the first cluster of related work.

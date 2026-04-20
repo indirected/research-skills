@@ -48,7 +48,10 @@ Read all relevant data sources:
 Read `project/research-focus.md` and extract `system_name` → use as `{{SYSTEM_NAME}}` throughout.
 
 **Optional (enrich analysis if present):**
-- All files in `literature/synthesis/` matching `*_synthesis.md`
+- Any synthesis content found under `literature/synthesis/` — discover by running:
+  `ls literature/synthesis/*/manifest.md 2>/dev/null` (nested layout, preferred)
+  `ls literature/synthesis/*.md 2>/dev/null` (flat layout, legacy)
+  Load whichever files are found; they contain thematic clusters and paper summaries.
 - `literature/triage_report_*.md` — gap themes noted during triage
 
 If `papers.csv` contains fewer than 5 synthesized/cited papers, warn the user:
@@ -59,7 +62,7 @@ If `papers.csv` contains fewer than 5 synthesized/cited papers, warn the user:
 Report the loaded state:
 - N synthesized papers
 - N cited papers
-- N synthesis files found in `literature/synthesis/`
+- N synthesis files found under `literature/synthesis/` (topic manifests or flat files)
 - Date range of papers loaded (min year to max year)
 
 ### Step 2 — Define Research Axes

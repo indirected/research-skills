@@ -113,11 +113,15 @@ Extract:
 
 ```python
 Read("literature/papers.csv")
-Glob("literature/synthesis/*.md")
+```
+```bash
+# Discover synthesis content — check both nested and flat layouts
+ls literature/synthesis/*/manifest.md 2>/dev/null  # topic manifests (preferred)
+ls literature/synthesis/*.md 2>/dev/null            # flat files (legacy)
 ```
 
-Extract the most recent papers (sorted by year DESC), the main themes in the literature,
-and the methods being applied.
+Read whichever synthesis files are found. Extract the most recent papers (sorted by year DESC),
+the main themes in the literature, and the methods being applied.
 
 ---
 

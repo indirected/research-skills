@@ -116,9 +116,10 @@ If `paper-paths.md` doesn't exist or has `TODO` paths, use these fallbacks:
 Use shell commands to check what exists without reading file contents.
 
 ```bash
-# Literature: how many papers collected / synthesized
-ls literature/*.md 2>/dev/null | wc -l           # total literature files
-wc -c literature/*.md 2>/dev/null | awk '$1 > 1500 {count++} END {print count+0}'  # synthesized (>1.5KB each)
+# Literature tracker and synthesis state
+ls literature/papers.csv 2>/dev/null                                   # tracker exists?
+grep -c ",synthesized," literature/papers.csv 2>/dev/null || echo 0    # synthesized paper count
+ls -d literature/synthesis/*/ 2>/dev/null | wc -l                      # synthesis topic dirs
 
 # Result tables
 ls paper/tables/*.tex 2>/dev/null | wc -l
@@ -163,13 +164,14 @@ Using the data collected above, assign each skill a status:
 - · if project-init not done
 
 **deep-paper-synthesis**
-- ✓ if literature files exist and avg size > 1.5KB (synthesis content is substantial)
-- ~ if some are synthesized but others are thin stubs
-- ○ if paper-search-and-triage is done
+- ✓ if `literature/papers.csv` has ≥ 1 row with status `synthesized`
+- ~ if `literature/synthesis/` has subdirectories but papers.csv synthesized count is 0
+  (synthesis started but tracker not yet updated, or only partially complete)
+- ○ if paper-search-and-triage is done (papers.csv exists with ≥ 1 `to-read` entry)
 - · otherwise
 
 **research-gap-mapper**
-- ✓ if `project/related-work-clusters.md` is populated
+- ✓ if `literature/gap_map.md` exists and is populated (> 400 bytes)
 - ○ if deep-paper-synthesis is ✓ or ~
 - · otherwise
 
@@ -218,8 +220,10 @@ Using the data collected above, assign each skill a status:
 **write-related-work**
 - ✓ if a section file matching `related*.tex` exists and size > 500B
 - ~ if file exists but small
-- ○ if `project/related-work-clusters.md` is populated
-- · otherwise
+- ○ if any literature exists: `literature/papers.csv` has entries, OR files exist under
+  `literature/synthesis/`, OR `literature/gap_map.md` exists
+  (write-related-work self-derives clusters from whatever is available)
+- · otherwise (no literature at all)
 
 **write-intro-and-abstract**
 - ✓ if `intro*.tex` or `abstract*.tex` exists and size > 500B

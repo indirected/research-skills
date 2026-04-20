@@ -165,7 +165,11 @@ Read("paper/latex/custom.bib")
 Then search the literature directory:
 ```python
 Read("literature/papers.csv")
-Glob("literature/synthesis/*.md")
+```
+```bash
+# Discover synthesis content — check both nested and flat layouts
+ls literature/synthesis/*/manifest.md 2>/dev/null  # topic manifests (preferred)
+ls literature/synthesis/*.md 2>/dev/null            # flat files (legacy)
 ```
 
 ---

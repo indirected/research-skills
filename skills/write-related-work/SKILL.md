@@ -71,8 +71,13 @@ rather than stopping or asking the user to run `project-init`.
 
 **Load available literature sources (in order of richness):**
 
+```bash
+# Discover synthesis content — structure varies; check both nested and flat layouts
+ls -d literature/synthesis/*/ 2>/dev/null          # topic subdirectories (nested layout)
+ls literature/synthesis/*/manifest.md 2>/dev/null  # manifest files within topic dirs
+ls literature/synthesis/*.md 2>/dev/null            # flat synthesis files (legacy layout)
 ```
-Glob: literature/synthesis/*.md          → thematic clusters from deep-paper-synthesis
+```
 Read: literature/gap_map.md              → coverage matrix from research-gap-mapper
 Read: literature/papers.csv              → full paper list with relevance scores and gap_notes
 Glob: literature/triage_report_*.md      → gap themes from paper-search-and-triage
@@ -80,11 +85,12 @@ Glob: literature/triage_report_*.md      → gap themes from paper-search-and-tr
 
 **Derive clusters using the best available source:**
 
-1. **If synthesis files exist** (`literature/synthesis/*.md`):
-   Each synthesis file contains a "Thematic Clusters" section (from deep-paper-synthesis Step 4a).
-   Read all synthesis files and collect every named cluster. Merge clusters with the same theme
-   (e.g., "LLM-based APR" and "LLM for code repair" are the same cluster). Aim for 3–5 distinct
-   clusters that cover the synthesized papers without overlap.
+1. **If synthesis content exists** (any `.md` files found anywhere under `literature/synthesis/`):
+   Synthesis outputs contain thematic clusters and paper summaries. Look for a `manifest.md`
+   in each topic subdirectory first (richest source); fall back to any `.md` file present.
+   Collect every named cluster across all synthesis files found. Merge clusters with the same
+   theme (e.g., "LLM-based APR" and "LLM for code repair" are the same cluster). Aim for 3–5
+   distinct clusters that cover the synthesized papers without overlap.
 
 2. **If `literature/gap_map.md` exists** (but no synthesis files):
    The gap map's coverage matrix axes define the research dimensions. Use the axis values and
@@ -162,18 +168,22 @@ Read: {{main_tex from project/paper-paths.md}}
 Glob: {{sections_dir}}/*.tex
 Read: {{bibliography from project/paper-paths.md}}
 Read: literature/papers.csv        (if exists)
-Glob: literature/synthesis/*.md    (if exists)
+```
+```bash
+# Find synthesis outputs — check both nested and flat layouts
+ls literature/synthesis/*/manifest.md 2>/dev/null  # preferred: topic manifests
+ls literature/synthesis/**/*.md 2>/dev/null         # fallback: all .md files recursively
 ```
 
-For each synthesis .md file found, read it — these contain the deep summaries from
-`deep-paper-synthesis` and are the primary source of content for related work paragraphs.
+For each synthesis file found, read it — these contain deep paper summaries and are the
+primary source of content for related work paragraphs.
 
 If `papers.csv` has entries, parse it for the full paper list with relevance scores.
 
-If both `literature/` files are empty:
+If no synthesis content is found under `literature/synthesis/`:
 > "I don't see any synthesized papers in `literature/synthesis/`. I can still draft related work
 > using the cluster descriptions in `project/related-work-clusters.md`, but the paragraphs will
-> have placeholder citations. Would you like to proceed, or run `deep-paper-synthesis` first?"
+> have placeholder citations. Would you like to proceed, or run synthesis first?"
 
 ---
 
